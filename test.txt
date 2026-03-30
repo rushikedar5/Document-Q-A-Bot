@@ -1,0 +1,1 @@
+TypeScript was created by Microsoft in 2012. It adds static types to JavaScript.

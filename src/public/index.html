@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Stage 5 — Document Q&A</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: sans-serif;
+      background: #f4f4f4;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .layout {
+      width: 100%;
+      max-width: 900px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid #eee;
+      font-weight: 600;
+      font-size: 14px;
+      color: #111;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: #eef4ff;
+      color: #0070f3;
+    }
+
+    .badge.green { background: #edfdf4; color: #16a34a; }
+
+    .card-body { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 8px;
+      text-align: center;
+      font-size: 13px;
+      cursor: pointer;
+      background: white;
+      color: #666;
+      border: none;
+      transition: background 0.15s;
+    }
+
+    .tab.active { background: #0070f3; color: white; font-weight: 500; }
+    .tab:not(.active):hover { background: #f0f5ff; color: #0070f3; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: flex; flex-direction: column; gap: 10px; }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+      padding: 28px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: #0070f3;
+      background: #f0f5ff;
+    }
+
+    .drop-zone input { display: none; }
+
+    .drop-zone-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    .drop-zone-sub { font-size: 12px; color: #999; }
+
+    .file-selected {
+      font-size: 12px;
+      color: #16a34a;
+      font-weight: 500;
+      margin-top: 6px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 140px;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 13px;
+      resize: vertical;
+      outline: none;
+      font-family: sans-serif;
+      line-height: 1.6;
+    }
+
+    textarea:focus { border-color: #0070f3; }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    input[type="text"]:focus { border-color: #0070f3; }
+
+    .btn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .btn-blue { background: #0070f3; color: white; }
+    .btn-blue:disabled { background: #aaa; cursor: not-allowed; }
+    .btn-green { background: #16a34a; color: white; }
+    .btn-green:disabled { background: #aaa; cursor: not-allowed; }
+
+    .status { font-size: 13px; color: #16a34a; min-height: 18px; }
+    .status.error { color: #dc2626; }
+
+    .suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip {
+      background: #f0f5ff;
+      color: #0070f3;
+      border: 1px solid #c7d9ff;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .chip:hover { background: #dceafe; }
+
+    /* Q&A */
+    .qa-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .qa-item { display: flex; flex-direction: column; gap: 6px; }
+
+    .qa-question {
+      background: #0070f3;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      align-self: flex-end;
+      max-width: 85%;
+    }
+
+    .qa-answer {
+      background: #f0f0f0;
+      color: #111;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.6;
+      align-self: flex-start;
+      max-width: 95%;
+    }
+
+    .qa-answer p { margin-bottom: 6px; }
+    .qa-answer p:last-child { margin-bottom: 0; }
+    .qa-answer ul, .qa-answer ol { padding-left: 18px; }
+    .qa-answer li { margin-bottom: 3px; }
+
+    .chunks-note {
+      font-size: 11px;
+      color: #999;
+      padding-left: 4px;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: #bbb;
+      font-size: 13px;
+      padding: 30px 0;
+    }
+
+    .sample-label { font-size: 12px; color: #999; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+
+    <!-- Left: Ingest -->
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <div class="card">
+        <div class="card-header">
+          Add document
+          <span class="badge" id="doc-badge">No doc loaded</span>
+        </div>
+        <div class="card-body">
+
+          <!-- Tabs -->
+          <div class="tabs">
+            <button class="tab active" onclick="switchTab('upload')">Upload file</button>
+            <button class="tab" onclick="switchTab('paste')">Paste text</button>
+          </div>
+
+          <!-- Upload tab -->
+          <div class="tab-panel active" id="tab-upload">
+            <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+              <input type="file" id="file-input" accept=".txt,.pdf" onchange="onFileSelected(this)"/>
+              <div class="drop-zone-title">Click to upload or drag & drop</div>
+              <div class="drop-zone-sub">.txt or .pdf files supported</div>
+              <div class="file-selected" id="file-name"></div>
+            </div>
+            <button class="btn btn-blue" id="upload-btn" onclick="uploadFile()">Upload & Index</button>
+          </div>
+
+          <!-- Paste tab -->
+          <div class="tab-panel" id="tab-paste">
+            <input type="text" id="doc-name" placeholder="Document name e.g. my-notes"/>
+            <textarea id="doc-text" placeholder="Paste any text here..."></textarea>
+            <button class="btn btn-blue" id="ingest-btn" onclick="ingest()">Index Document</button>
+          </div>
+
+          <div class="status" id="ingest-status"></div>
+        </div>
+      </div>
+
+      <!-- Sample docs -->
+      <div class="card">
+        <div class="card-header">Try a sample</div>
+        <div class="card-body">
+          <span class="sample-label">Click to load into paste tab</span>
+          <div class="suggestions">
+            <span class="chip" onclick="loadSample('typescript')">TypeScript</span>
+            <span class="chip" onclick="loadSample('nodejs')">Node.js</span>
+            <span class="chip" onclick="loadSample('rag')">What is RAG</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Ask -->
+    <div class="card">
+      <div class="card-header">
+        Ask a question
+        <span class="badge green" id="qa-badge">0 asked</span>
+      </div>
+      <div class="card-body">
+        <div class="suggestions">
+          <span class="chip" onclick="fillQ('Who created this?')">Who created it?</span>
+          <span class="chip" onclick="fillQ('What are the main benefits?')">Main benefits?</span>
+          <span class="chip" onclick="fillQ('Give me a summary')">Summarize</span>
+        </div>
+        <input type="text" id="question-input" placeholder="Ask anything about your document..."/>
+        <button class="btn btn-green" id="ask-btn" onclick="ask()">Ask</button>
+        <div class="qa-list" id="qa-list">
+          <div class="empty-state">Index a document first, then ask questions.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const samples = {
+      typescript: {
+        name: "typescript-guide",
+        text: `TypeScript is a strongly typed programming language that builds on JavaScript.
+It was developed by Microsoft and first released in 2012.
+TypeScript adds optional static typing and class-based object-oriented programming to JavaScript.
+
+The main benefits of TypeScript include catching errors at compile time rather than runtime,
+better IDE support with autocomplete and refactoring tools, and improved code readability.
+
+TypeScript code is compiled to plain JavaScript which runs anywhere JavaScript runs.
+
+Generics in TypeScript allow you to write reusable type-safe code that works with any type
+while still preserving type information.
+
+Interfaces in TypeScript define the shape of an object and are purely a compile-time construct.
+
+TypeScript supports modern JavaScript features like async/await, destructuring,
+spread operators, and optional chaining, while also adding enums, decorators, and type aliases.`
+      },
+      nodejs: {
+        name: "nodejs-guide",
+        text: `Node.js is a JavaScript runtime built on Chrome's V8 JavaScript engine.
+It was created by Ryan Dahl and first released in 2009.
+Node.js allows JavaScript to run on the server side outside of a browser.
+
+Node.js uses an event-driven non-blocking I/O model that makes it lightweight and efficient.
+This makes it well suited for real-time applications like chat apps and APIs.
+
+npm is the default package manager for Node.js and hosts over 2 million packages.
+
+Node.js is commonly used to build REST APIs, streaming applications, and CLI tools.
+Popular frameworks built on Node.js include Express, Fastify, and NestJS.`
+      },
+      rag: {
+        name: "rag-explainer",
+        text: `RAG stands for Retrieval Augmented Generation.
+It is a technique that combines information retrieval with language model generation.
+
+The core idea of RAG is to give the language model access to external knowledge
+that it was not trained on such as your own documents PDFs or databases.
+
+RAG works in two phases. The first phase is indexing: documents are split into chunks,
+each chunk is converted into a vector embedding and stored in a vector database.
+
+The second phase is querying: the user question is converted into a vector,
+similar chunks are retrieved from the vector database and injected into the prompt.
+
+The main benefit of RAG is that it prevents hallucination by grounding the model
+in real retrieved content rather than relying on training data alone.
+
+ChromaDB is a popular open-source vector database used in RAG pipelines.`
+      }
+    };
+
+    let qaCount = 0;
+    let selectedFile = null;
+
+    // ── Tabs ──────────────────────────────────────────────────────
+    function switchTab(tab) {
+      document.querySelectorAll(".tab").forEach((t, i) => {
+        t.classList.toggle("active", (i === 0 && tab === "upload") || (i === 1 && tab === "paste"));
+      });
+      document.getElementById("tab-upload").classList.toggle("active", tab === "upload");
+      document.getElementById("tab-paste").classList.toggle("active", tab === "paste");
+      document.getElementById("ingest-status").textContent = "";
+    }
+
+    // ── File upload ───────────────────────────────────────────────
+    function onFileSelected(input) {
+      selectedFile = input.files[0];
+      document.getElementById("file-name").textContent = selectedFile ? `Selected: ${selectedFile.name}` : "";
+    }
+
+    const dropZone = document.getElementById("drop-zone");
+    dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("dragover"); });
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+      selectedFile = e.dataTransfer.files[0];
+      document.getElementById("file-name").textContent = selectedFile ? `Selected: ${selectedFile.name}` : "";
+    });
+
+    async function uploadFile() {
+      if (!selectedFile) {
+        setStatus("Please select a file first.", true);
+        return;
+      }
+
+      const btn = document.getElementById("upload-btn");
+      btn.disabled = true;
+      btn.textContent = "Uploading...";
+      setStatus("");
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      try {
+        const res = await fetch("/upload", { method: "POST", body: formData });
+        const data = await res.json();
+
+        if (!res.ok) {
+          setStatus(data.error ?? "Upload failed.", true);
+          return;
+        }
+
+        setStatus(`Indexed ${data.chunks} chunks from "${data.docName}"`);
+        markIndexed(data.docName);
+
+      } catch {
+        setStatus("Failed to connect to server.", true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Upload & Index";
+      }
+    }
+
+    // ── Paste ingest ──────────────────────────────────────────────
+    async function ingest() {
+      const text = document.getElementById("doc-text").value.trim();
+      const docName = document.getElementById("doc-name").value.trim();
+      const btn = document.getElementById("ingest-btn");
+
+      if (!text || !docName) {
+        setStatus("Please enter a document name and text.", true);
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Indexing...";
+      setStatus("");
+
+      try {
+        const res = await fetch("/ingest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, docName }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          setStatus(data.error ?? "Ingestion failed.", true);
+          return;
+        }
+
+        setStatus(`Indexed ${data.chunks} chunks from "${data.docName}"`);
+        markIndexed(data.docName);
+
+      } catch {
+        setStatus("Failed to connect to server.", true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Index Document";
+      }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────
+    function setStatus(msg, isError = false) {
+      const el = document.getElementById("ingest-status");
+      el.textContent = msg;
+      el.className = isError ? "status error" : "status";
+    }
+
+    function markIndexed(docName) {
+      const badge = document.getElementById("doc-badge");
+      badge.textContent = docName;
+      badge.className = "badge green";
+      document.getElementById("qa-list").innerHTML = '<div class="empty-state">Document indexed! Ask a question.</div>';
+    }
+
+    function loadSample(key) {
+      const s = samples[key];
+      switchTab("paste");
+      document.getElementById("doc-name").value = s.name;
+      document.getElementById("doc-text").value = s.text;
+    }
+
+    function fillQ(text) {
+      document.getElementById("question-input").value = text;
+      document.getElementById("question-input").focus();
+    }
+
+    // ── Ask ───────────────────────────────────────────────────────
+    async function ask() {
+      const question = document.getElementById("question-input").value.trim();
+      const btn = document.getElementById("ask-btn");
+      const qaList = document.getElementById("qa-list");
+
+      if (!question) return;
+
+      document.getElementById("question-input").value = "";
+      btn.disabled = true;
+      btn.textContent = "Thinking...";
+
+      const emptyState = qaList.querySelector(".empty-state");
+      if (emptyState) emptyState.remove();
+
+      const item = document.createElement("div");
+      item.className = "qa-item";
+      item.innerHTML = `
+        <div class="qa-question">${question}</div>
+        <div class="qa-answer" id="loading-ans" style="color:#999;font-style:italic;">Searching document...</div>
+      `;
+      qaList.appendChild(item);
+      qaList.scrollTop = qaList.scrollHeight;
+
+      try {
+        const res = await fetch("/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question }),
+        });
+
+        const data = await res.json();
+        const ansEl = item.querySelector("#loading-ans");
+
+        if (!res.ok) {
+          ansEl.textContent = data.error ?? "Something went wrong.";
+          ansEl.style.color = "#dc2626";
+          ansEl.style.fontStyle = "normal";
+          return;
+        }
+
+        ansEl.removeAttribute("id");
+        ansEl.style.color = "";
+        ansEl.style.fontStyle = "";
+        ansEl.innerHTML = marked.parse(data.answer);
+
+        const note = document.createElement("div");
+        note.className = "chunks-note";
+        note.textContent = `Retrieved ${data.chunks.length} chunk${data.chunks.length !== 1 ? "s" : ""} from document`;
+        item.appendChild(note);
+
+        qaCount++;
+        document.getElementById("qa-badge").textContent = `${qaCount} asked`;
+
+      } catch {
+        const ansEl = item.querySelector("#loading-ans");
+        if (ansEl) { ansEl.textContent = "Failed to connect."; ansEl.style.color = "#dc2626"; }
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Ask";
+        qaList.scrollTop = qaList.scrollHeight;
+      }
+    }
+
+    document.getElementById("question-input").addEventListener("keydown", e => {
+      if (e.key === "Enter") ask();
+    });
+  </script>
+</body>
+</html>
